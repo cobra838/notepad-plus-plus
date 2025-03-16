@@ -253,7 +253,7 @@ void TabBar::reSizeTo(RECT & rc2Ajust)
 
 	::SetWindowLongPtr(_hSelf, GWL_STYLE, style);
 	tabsHight = rowCount * (larger - smaller) + marge;
-	tabsHight += _dpiManager.getSystemMetricsForDpi(_isVertical ? SM_CXEDGE : SM_CYEDGE);
+	tabsHight += GetSystemMetrics(_isVertical ? SM_CXEDGE : SM_CYEDGE);
 
 	if (_isVertical)
 	{
@@ -1383,7 +1383,7 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 	::SetBkMode(hDC, TRANSPARENT);
 	HBRUSH hBrush = ::CreateSolidBrush(colorInactiveBgBase);
 	::FillRect(hDC, &rect, hBrush);
-	::DeleteObject(static_cast<HGDIOBJ>(hBrush));
+	::DeleteObject((HGDIOBJ)hBrush);
 
 	// equalize drawing areas of active and inactive tabs
 	int paddingDynamicTwoX = _dpiManager.scale(2);
@@ -1391,9 +1391,10 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 	if (isSelected && !isDarkMode)
 	{
 		// the drawing area of the active tab extends on all borders by default
-		const int xEdge = _dpiManager.getSystemMetricsForDpi(SM_CXEDGE);
-		const int yEdge = _dpiManager.getSystemMetricsForDpi(SM_CYEDGE);
-		::InflateRect(&rect, -xEdge, -yEdge);
+		rect.top += ::GetSystemMetrics(SM_CYEDGE);
+		rect.bottom -= ::GetSystemMetrics(SM_CYEDGE);
+		rect.left += ::GetSystemMetrics(SM_CXEDGE);
+		rect.right -= ::GetSystemMetrics(SM_CXEDGE);
 		// the active tab is also slightly higher by default (use this to shift the tab cotent up bx two pixels if tobBar is not drawn)
 		if (_isVertical)
 		{
@@ -1463,18 +1464,20 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 				barRect.bottom = barRect.top + topBarHeight;
 			}
 
-			const bool isFocused = ::SendMessage(_hParent, NPPM_INTERNAL_ISFOCUSEDTAB, 0, reinterpret_cast<LPARAM>(_hSelf));
-			COLORREF topBarColour = isFocused ? _activeTopBarFocusedColour : _activeTopBarUnfocusedColour; // #FAAA3C, #FAD296
-
-			if (individualColourId != -1)
+			if (::SendMessage(_hParent, NPPM_INTERNAL_ISFOCUSEDTAB, 0, reinterpret_cast<LPARAM>(_hSelf)))
 			{
-				topBarColour = nppParam.getIndividualTabColor(individualColourId, isDarkMode, isFocused);
+				COLORREF topBarColour = _activeTopBarFocusedColour; // #FAAA3C
+				if (individualColourId != -1)
+				{
+					topBarColour = NppDarkMode::getIndividualTabColour(individualColourId, isDarkMode, true);
+				}
+				hBrush = ::CreateSolidBrush(topBarColour);
 			}
-
-			hBrush = ::CreateSolidBrush(topBarColour);
+			else
+				hBrush = ::CreateSolidBrush(_activeTopBarUnfocusedColour); // #FAD296
 
 			::FillRect(hDC, &barRect, hBrush);
-			::DeleteObject(static_cast<HGDIOBJ>(hBrush));
+			::DeleteObject((HGDIOBJ)hBrush);
 		}
 	}
 	else // inactive tabs
@@ -1503,7 +1506,7 @@ void TabBarPlus::drawItem(DRAWITEMSTRUCT* pDrawItemStruct, bool isDarkMode)
 		
 		hBrush = ::CreateSolidBrush(brushColour);
 		::FillRect(hDC, &inactiveRect, hBrush);
-		::DeleteObject(static_cast<HGDIOBJ>(hBrush));
+		::DeleteObject((HGDIOBJ)hBrush);
 	}
 
 	if (isDarkMode && hasMultipleLines)
